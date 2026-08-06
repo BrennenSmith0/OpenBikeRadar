@@ -44,6 +44,17 @@ class Target:
     speed: int
     snr: int
 
+    def __str__(self):
+        direction = "Approaching" if self.approaching else "Moving Away"
+
+        return (
+            f"{direction} "
+            f"{self.distance:3}m "
+            f"{self.angle:+3}° "
+            f"{self.speed:2}km/h "
+            f"SNR={self.snr}"
+        )
+
     @property 
     def angle_radians(self) -> float:
         return math.radians(self.angle)
