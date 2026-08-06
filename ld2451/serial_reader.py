@@ -62,6 +62,12 @@ class Frame:
             f"payload={self.payload.hex(' ')})"
         )
 
+    def __post_init__(self):
+        if self.length != len(self.payload):
+            raise ValueError(
+                "Frame length does not match payload length"
+        )
+
 
 class SerialReader:
     """
@@ -133,11 +139,7 @@ class SerialReader:
 
             if frame is not None:
                 yield frame
-    def __post_init__(self):
-        if self.length != len(self.payload):
-            raise ValueError(
-                "Frame length does not match payload length"
-            )
+
     
     def read_frame(self) -> Optional[Frame]:
         """
