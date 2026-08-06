@@ -1,19 +1,25 @@
 """
 Shared pytest configuration.
 
-The source modules (ld2451/, garmin/, simulator/, tracker/) are plain
-folders of scripts, not installable packages -- there's no setup.py or
-pyproject.toml, and no __init__.py files. So a test under tests/ld2451/
-can't just `import serial_reader`; Python has no way to find it.
+ld2451/ is now a real package (it has __init__.py). garmin/, simulator/,
+and tracker/ are still plain folders of scripts with no __init__.py.
 
-This file adds each source folder to sys.path once, at collection time,
-so any test anywhere under tests/ can import the module it's testing by
-its plain filename, e.g.:
+Rather than mixing two import styles, everything is imported package-
+style off the repo root, e.g.:
 
-    from serial_reader import SerialReader   # ld2451/serial_reader.py
-    from tracker import Tracker              # tracker/tracker.py
+    from ld2451.serial_reader import SerialReader
+    from ld2451.frame_parser import parse
 
-As new module folders gain tests, add them to SOURCE_DIRS below.
+So this file adds only the repo root to sys.path, once, at collection
+time. Adding module folders directly (the old approach) is what caused
+the `ModuleNotFoundError: No module named 'ld2451.serial_reader'` bug:
+pytest also puts tests/ on sys.path to load this file, and since
+tests/ld2451/ has no __init__.py, Python was treating it as an implicit
+namespace package literally named "ld2451" -- shadowing the real one.
+
+If garmin/, simulator/, or tracker/ later get their own __init__.py
+files (recommended once they have real code), tests for them can use
+the same `from garmin.varia import ...` style with no further setup.
 """
 
 import sys
@@ -21,14 +27,5 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-SOURCE_DIRS = [
-    "ld2451",
-    "garmin",
-    "simulator",
-    "tracker",
-]
-
-for _name in SOURCE_DIRS:
-    _path = str(REPO_ROOT / _name)
-    if _path not in sys.path:
-        sys.path.insert(0, _path)
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))

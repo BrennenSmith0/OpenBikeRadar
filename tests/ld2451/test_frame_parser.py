@@ -1,7 +1,7 @@
 import pytest
 
 from ld2451.serial_reader import Frame
-from ld2451.frame_parser import parse
+from ld2451.frame_parser import parse, Direction
 
 
 def make_frame(payload: bytes) -> Frame:
@@ -56,7 +56,7 @@ def test_parse_single_target():
 
     assert target.angle == 10
     assert target.distance == 42
-    assert target.approaching is True
+    assert target.direction is Direction.APPROACHING
     assert target.speed == 55
     assert target.snr == 200
 
@@ -85,10 +85,10 @@ def test_parse_two_targets():
     assert len(radar.targets) == 2
 
     assert radar.targets[0].angle == 5
-    assert radar.targets[0].approaching is True
+    assert radar.targets[0].direction is Direction.APPROACHING
 
     assert radar.targets[1].angle == -8
-    assert radar.targets[1].approaching is False
+    assert radar.targets[1].direction is Direction.MOVING_AWAY
 
 
 def test_payload_too_short():

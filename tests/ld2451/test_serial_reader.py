@@ -20,7 +20,7 @@ import struct
 
 import pytest
 
-from serial_reader import SerialReader  # path set up by tests/conftest.py
+from ld2451.serial_reader import SerialReader  # path set up by tests/conftest.py
 
 HEADER = SerialReader.DEFAULT_HEADER
 TRAILER = SerialReader.DEFAULT_TRAILER

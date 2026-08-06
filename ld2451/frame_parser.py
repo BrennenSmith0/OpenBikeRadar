@@ -109,7 +109,7 @@ def parse(frame: Frame) -> RadarFrame:
         target = Target(
             angle=raw_angle - 0x80,
             distance=distance,
-            approaching=(direction == 0),
+            direction=direction,
             speed=speed,
             snr=snr,
         )
