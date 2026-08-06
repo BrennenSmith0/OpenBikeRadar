@@ -29,8 +29,8 @@ from .serial_reader import Frame
 from enum import Enum
 
 class Direction(Enum):
-    APPROACHING = 0
-    MOVING_AWAY = 1
+    APPROACHING = 1
+    MOVING_AWAY = 0
 
 @dataclass(frozen=True)
 class Target:
@@ -45,8 +45,12 @@ class Target:
     snr: int
 
     def __str__(self):
-        direction = "Approaching" if self.approaching else "Moving Away"
 
+        if self.direction == Direction.APPROACHING:
+            direction = "Approaching"
+        else:
+            direction = "Moving Away"
+        
         return (
             f"{direction} "
             f"{self.distance:3}m "
@@ -89,6 +93,14 @@ def parse(frame: Frame) -> RadarFrame:
     """
 
     payload = frame.payload
+    # Handle the empty "no target" frames this sensor sends
+    if len(payload) == 0:
+        return RadarFrame(
+            target_count=0,
+            approaching_detected=False,
+            targets=[],
+        )
+  
 
     if len(payload) < 2:
         raise ValueError("Payload too short.")
