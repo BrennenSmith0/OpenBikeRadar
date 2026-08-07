@@ -26,14 +26,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 import math
 from .serial_reader import Frame
-from enum import Enum
+from .enums import Direction
 
-class Direction(Enum):
-    APPROACHING = 1
-    MOVING_AWAY = 0
 
 @dataclass(frozen=True)
-class Target:
+class RadarTarget:
     """
     One detected radar target.
     """
@@ -75,7 +72,7 @@ class RadarFrame:
 
     target_count: int
     approaching_detected: bool
-    targets: list[Target]
+    targets: list[RadarTarget]
 
 
 def parse(frame: Frame) -> RadarFrame:
@@ -117,7 +114,7 @@ def parse(frame: Frame) -> RadarFrame:
             f"received {len(payload)}."
         )
 
-    targets: list[Target] = []
+    targets: list[RadarTarget] = []
 
     offset = 2
 
@@ -129,7 +126,7 @@ def parse(frame: Frame) -> RadarFrame:
         speed = payload[offset + 3]
         snr = payload[offset + 4]
 
-        target = Target(
+        target = RadarTarget(
             angle=raw_angle - 0x80,
             distance=distance,
             direction=direction,
