@@ -12,10 +12,15 @@ from tracker.target import TrackedTarget
 
 
 from config import (
-    TRACK_MATCH_ANGLE,
-    TRACK_MIN_DISTANCE_BUFFER,
-    TRACK_BUFFER_PERCENT,
-    TRACK_MAX_MISSED,
+    MAX_ANGLE_ERROR,
+    TRACK_MIN_DISTANCE_BUFFER,     # meters
+    TRACK_BUFFER_PERCENT,         # 10%
+    TRACK_STATIONARY_BUFFER,     # speed < 1 m/s
+    TRACK_SLOW_BUFFER,             # speed < 5 m/s
+    TRACK_MATCH_DISTANCE,      # meters
+    TRACK_MATCH_ANGLE,       # degrees
+    TRACK_MAX_MISSED,          # frames
+    TRACK_MATCH_SCORE,              # normalized score
 )
 
 
@@ -54,6 +59,9 @@ class Tracker:
         #
         # Match each radar target
         #
+        #
+        # Try to match each radar target
+        #
         for radar in radar_targets:
 
             best_track = None
@@ -65,7 +73,7 @@ class Tracker:
                     continue
 
                 #
-                # Predict where this target should be now.
+                # Predict where the target should be.
                 #
                 travel = track.speed * dt
 
@@ -79,34 +87,44 @@ class Tracker:
                 )
 
                 angle_error = abs(
-                    radar.angle - track.angle
+                radar.angle - track.angle
                 )
 
-                tolerance = max(
+                #
+                # Slow targets jitter much more than they move.
+                #
+                if track.speed < 1.0:
+                    distance_tolerance = TRACK_STATIONARY_BUFFER
+
+                elif track.speed < 5.0:
+                    distance_tolerance = TRACK_SLOW_BUFFER
+
+                else:
+                    distance_tolerance = max(
                     TRACK_MIN_DISTANCE_BUFFER,
                     travel * TRACK_BUFFER_PERCENT,
                 )
 
-                if distance_error > tolerance:
-                    continue
-
-                if angle_error > TRACK_MATCH_ANGLE:
-                    continue
-
                 #
-                # Lower score = better match.
+                # Normalized score.
                 #
                 score = (
-                    distance_error
-                    + angle_error * 0.2
+                    distance_error / distance_tolerance
+                    + angle_error / TRACK_MATCH_ANGLE
                 )
+
+                #
+                # Reject obviously bad matches.
+                #
+                if score >= 2.0:
+                    continue
 
                 if score < best_score:
                     best_score = score
                     best_track = track
 
             #
-            # Existing target
+            # Update existing track
             #
             if best_track is not None:
 
@@ -122,7 +140,7 @@ class Tracker:
                 matched_tracks.add(best_track.id)
 
             #
-            # New target
+            # Create new track
             #
             else:
 
@@ -135,11 +153,10 @@ class Tracker:
                         direction=radar.direction,
                         snr=radar.snr,
                     )
-                )
+                )   
 
                 matched_tracks.add(self.next_id)
                 self.next_id += 1
-
         #
         # Age unmatched tracks
         #

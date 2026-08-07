@@ -1,4 +1,5 @@
 from ld2451.enums import Direction
+from dataclasses import dataclass
 
 @dataclass
 class TrackedTarget:

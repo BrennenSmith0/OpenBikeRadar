@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "Open source bike radar using LD2451"
 requires-python = ">=3.9"
 
+[tool.setuptools]
+py-modules = ["config"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["ld2451*", "tracker*", "garmin*", "simulator*"]
