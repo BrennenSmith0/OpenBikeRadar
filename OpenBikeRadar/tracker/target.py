@@ -13,3 +13,4 @@ class TrackedTarget:
 
     age: int = 1
     missed_frames: int = 0
+    has_approached: bool = False          # ← new

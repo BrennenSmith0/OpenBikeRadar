@@ -137,12 +137,16 @@ class Tracker:
                 best_track.age += 1
                 best_track.missed_frames = 0
 
+                if radar.direction == Direction.APPROACHING:
+                    best_track.has_approached = True
+
                 matched_tracks.add(best_track.id)
 
             #
             # Create new track
             #
             else:
+                has_approached = radar.direction == Direction.APPROACHING
 
                 self.targets.append(
                     TrackedTarget(
@@ -152,6 +156,7 @@ class Tracker:
                         speed=radar.speed,
                         direction=radar.direction,
                         snr=radar.snr,
+                        has_approached=has_approached,   # ← new
                     )
                 )   
 
