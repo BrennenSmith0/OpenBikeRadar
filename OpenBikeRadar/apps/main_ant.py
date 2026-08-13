@@ -1,7 +1,6 @@
-
 """
 End-to-end application:
-LD2451 Data -> Serial Parser -> Frame -> Tracked Object -> Garmin Object -> Garmin Message
+LD2451 → SerialReader → FrameParser → Tracker → ANT+ Bike Radar
 """
 
 from __future__ import annotations
@@ -10,21 +9,21 @@ import logging
 import signal
 import sys
 import time
-import config
 from pathlib import Path
 
 # Make the project root importable when running as a script
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import config
 from ld2451.serial_reader import SerialReader
 from ld2451.frame_parser import parse
-from ld2451.frame_parser import Direction  # adjust if your enum lives elsewhere
+from ld2451.enums import Direction
+
+from tracker.tracker import Tracker
 
 from garmin.ant_radar import AntRadarBroadcaster
 from garmin.threat import (
     AntTarget,
-    ThreatLevel,
-    ThreatSide,
     make_threat_level,
     make_threat_side,
 )
@@ -37,48 +36,33 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("ant_radar_test")
+logger = logging.getLogger("ant_main")
 
 
-def radar_targets_to_ant(targets) -> list[AntTarget]:
+def tracked_to_ant(targets) -> list[AntTarget]:
     """
-    Convert your LD2451 / tracker Target objects into AntTarget.
+    Convert TrackedTarget objects into AntTarget for the broadcaster.
 
-    Adjust the attribute names below to match whatever your
-    tracker (or frame_parser.Target) actually exposes.
+    - speed on TrackedTarget is treated as km/h (same as LD2451)
+    - closing_speed_mps is signed: positive = approaching, negative = receding
+    - has_approached comes from the tracker
     """
-    ant_targets = []
+    ant_targets: list[AntTarget] = []
 
     for t in targets:
-        # --- distance ---
-        distance_m = float(getattr(t, "distance", 0))
+        distance_m = float(t.distance)
+        angle = float(t.angle)
 
-        # --- closing speed (m/s) ---
-        if hasattr(t, "closing_speed_mps"):
-            speed_mps = float(t.closing_speed_mps)
-        elif hasattr(t, "speed"):
-            # assume km/h → m/s
-            speed_mps = float(t.speed) / 3.6
-        else:
-            speed_mps = 0.0
-
-        # --- approaching? ---
-        is_approaching = True
-        direction = getattr(t, "direction", None)
-        if direction is not None:
-            # Works with both Enum and string
-            dir_str = str(direction).upper()
-            is_approaching = "APPROACH" in dir_str
-
-        # --- angle → side ---
-        angle = float(getattr(t, "angle", 0))
+        # km/h → m/s, then apply sign from direction
+        speed_mps = float(t.speed) / 3.6
+        if t.direction == Direction.MOVING_AWAY:
+            speed_mps = -speed_mps
 
         level = make_threat_level(
             closing_speed_mps=speed_mps,
             range_m=distance_m,
-            has_approached=getattr(t, "has_approached", True),
+            has_approached=getattr(t, "has_approached", False),
         )
-        
         side = make_threat_side(angle)
 
         ant_targets.append(
@@ -94,13 +78,14 @@ def radar_targets_to_ant(targets) -> list[AntTarget]:
 
 
 def main() -> None:
-    logger.info("Starting ANT+ Bike Radar test")
+    logger.info("Starting OpenBikeRadar (ANT+)")
     logger.info("Device number = %s", config.ANT_DEVICE_NUMBER)
 
     broadcaster = AntRadarBroadcaster(device_number=config.ANT_DEVICE_NUMBER)
     broadcaster.start()
 
-    # Graceful shutdown on Ctrl-C
+    tracker = Tracker()
+
     stop = False
 
     def handle_sigint(sig, frame):
@@ -111,35 +96,52 @@ def main() -> None:
     signal.signal(signal.SIGINT, handle_sigint)
 
     frame_count = 0
-    last_print = time.monotonic()
+    last_time = time.monotonic()
+    last_print = last_time
 
     try:
-        with SerialReader() as reader:          # uses default port / settings
+        with SerialReader() as reader:
             logger.info("Serial reader opened – waiting for frames…")
 
             for frame in reader:
                 if stop:
                     break
 
+                now = time.monotonic()
+                dt = now - last_time
+                last_time = now
+
+                # Guard against huge dt after pauses / first frame
+                if dt <= 0 or dt > 1.0:
+                    dt = 0.1
+
                 radar = parse(frame)
                 frame_count += 1
 
-                # Convert and push to ANT+
-                ant_targets = radar_targets_to_ant(radar.targets)
+                # Track across frames (sets has_approached, stable IDs, etc.)
+                tracked = tracker.update(radar.targets, dt)
+
+                # Convert and broadcast
+                ant_targets = tracked_to_ant(tracked)
                 broadcaster.update_targets(ant_targets)
 
-                # Occasional console feedback
-                now = time.monotonic()
-                if now - last_print >= 1.0:     # roughly once per second
+                # Console feedback ~1 Hz
+                if now - last_print >= 1.0:
                     last_print = now
-                    if radar.target_count == 0:
-                        logger.info("No targets")
+                    if not tracked:
+                        logger.info("No tracked targets")
                     else:
-                        for i, t in enumerate(radar.targets):
+                        for t in tracked:
+                            sign = "+" if t.direction == Direction.APPROACHING else "-"
                             logger.info(
-                                "  Target %d: %s",
-                                i + 1,
-                                t,               # uses your Target.__str__
+                                "  id=%d  %s%.0fkm/h  %dm  %+d°  approached=%s  missed=%d",
+                                t.id,
+                                sign,
+                                t.speed,
+                                t.distance,
+                                t.angle,
+                                t.has_approached,
+                                t.missed_frames,
                             )
 
     except Exception as e:

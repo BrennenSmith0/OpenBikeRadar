@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+import config
 from typing import List, Optional, Sequence
 
 from openant.easy.node import Node
@@ -51,7 +52,7 @@ class AntRadarBroadcaster:
 
     def __init__(
         self,
-        device_number: int = 54321,
+        device_number: int = config.ANT_DEVICE_NUMBER,
         manufacturer_id: int = 0x00FF,   # development / open-source
         model_number: int = 1,
         software_version: int = 1,
@@ -201,7 +202,7 @@ class AntRadarBroadcaster:
 
 def tracked_to_ant_targets(tracked_targets) -> List[AntTarget]:
     """
-    Convert objects from your tracker package into AntTarget instances.
+    Convert objects from the tracker package into AntTarget instances.
 
     Expected attributes on each tracked target:
         .distance          (meters)

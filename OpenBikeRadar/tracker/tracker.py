@@ -11,17 +11,8 @@ from ld2451.enums import Direction
 from tracker.target import TrackedTarget
 
 
-from config import (
-    MAX_ANGLE_ERROR,
-    TRACK_MIN_DISTANCE_BUFFER,     # meters
-    TRACK_BUFFER_PERCENT,         # 10%
-    TRACK_STATIONARY_BUFFER,     # speed < 1 m/s
-    TRACK_SLOW_BUFFER,             # speed < 5 m/s
-    TRACK_MATCH_DISTANCE,      # meters
-    TRACK_MATCH_ANGLE,       # degrees
-    TRACK_MAX_MISSED,          # frames
-    TRACK_MATCH_SCORE,              # normalized score
-)
+import config 
+
 
 
 class Tracker:
@@ -75,7 +66,7 @@ class Tracker:
                 #
                 # Predict where the target should be.
                 #
-                travel = track.speed * dt
+                travel = (track.speed /3.6)* dt
 
                 if track.direction == Direction.APPROACHING:
                     predicted_distance = track.distance - travel
@@ -93,16 +84,16 @@ class Tracker:
                 #
                 # Slow targets jitter much more than they move.
                 #
-                if track.speed < 1.0:
-                    distance_tolerance = TRACK_STATIONARY_BUFFER
+                if track.speed < config.TRACK_SLOW_SPEED_THRESHOLD:
+                    distance_tolerance = config.TRACK_STATIONARY_BUFFER
 
-                elif track.speed < 5.0:
-                    distance_tolerance = TRACK_SLOW_BUFFER
+                elif track.speed < config.TRACK_FAST_SPEED_THRESHOLD:
+                    distance_tolerance = config.TRACK_SLOW_BUFFER
 
                 else:
                     distance_tolerance = max(
-                    TRACK_MIN_DISTANCE_BUFFER,
-                    travel * TRACK_BUFFER_PERCENT,
+                    config.TRACK_MIN_DISTANCE_BUFFER,
+                    travel * config.TRACK_BUFFER_PERCENT,
                 )
 
                 #
@@ -110,13 +101,13 @@ class Tracker:
                 #
                 score = (
                     distance_error / distance_tolerance
-                    + angle_error / TRACK_MATCH_ANGLE
+                    + angle_error / config.TRACK_MATCH_ANGLE
                 )
 
                 #
                 # Reject obviously bad matches.
                 #
-                if score >= 2.0:
+                if score >= config.TRACK_MATCH_SCORE:
                     continue
 
                 if score < best_score:
@@ -172,7 +163,7 @@ class Tracker:
             if track.id not in matched_tracks:
                 track.missed_frames += 1
 
-            if track.missed_frames <= TRACK_MAX_MISSED:
+            if track.missed_frames <= config.TRACK_MAX_MISSED:
                 survivors.append(track)
 
         self.targets = survivors
