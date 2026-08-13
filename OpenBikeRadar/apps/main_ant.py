@@ -1,11 +1,7 @@
-#!/usr/bin/env python3
-"""
-End-to-end test: LD2451 → tracker → ANT+ Bike Radar broadcast.
 
-Requirements:
-  - ANT USB stick plugged in
-  - openant installed
-  - LD2451 connected and powered
+"""
+End-to-end application:
+LD2451 Data -> Serial Parser -> Frame -> Tracked Object -> Garmin Object -> Garmin Message
 """
 
 from __future__ import annotations
@@ -14,6 +10,7 @@ import logging
 import signal
 import sys
 import time
+import config
 from pathlib import Path
 
 # Make the project root importable when running as a script
@@ -41,13 +38,6 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger("ant_radar_test")
-
-# ---------------------------------------------------------------------------
-# Configuration – tweak these
-# ---------------------------------------------------------------------------
-ANT_DEVICE_NUMBER = 12345          # Change if you want a different ID
-SERIAL_PORT = None                 # None = auto / default from SerialReader
-PRINT_EVERY_N_FRAMES = 10          # How often to print status to console
 
 
 def radar_targets_to_ant(targets) -> list[AntTarget]:
@@ -105,9 +95,9 @@ def radar_targets_to_ant(targets) -> list[AntTarget]:
 
 def main() -> None:
     logger.info("Starting ANT+ Bike Radar test")
-    logger.info("Device number = %s", ANT_DEVICE_NUMBER)
+    logger.info("Device number = %s", config.ANT_DEVICE_NUMBER)
 
-    broadcaster = AntRadarBroadcaster(device_number=ANT_DEVICE_NUMBER)
+    broadcaster = AntRadarBroadcaster(device_number=config.ANT_DEVICE_NUMBER)
     broadcaster.start()
 
     # Graceful shutdown on Ctrl-C

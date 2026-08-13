@@ -1,19 +1,16 @@
 """
 serial_reader.py
-
-Generic framed serial reader for the HLK-LD2451 project.
-
+Handles reading in the bytes from the HLK-LD2451 sensor.
 This module is responsible ONLY for reading complete frames from the
 serial port. It does not interpret or decode the payload.
 
 Frame format:
+-Header: 4 bytes
+-Length: 2 bytes
+-Payload: N bytes
+-Trailer: 4 bytes
 
-    +------------+-------------+-------------+------------+
-    | Header     | Length      | Payload     | Trailer    |
-    | 4 bytes    | 2 bytes LE  | N bytes     | 4 bytes    |
-    +------------+-------------+-------------+------------+
-
-For the LD2451 radar:
+For the LD2451 radar on signal frames:
 
 Header  = F4 F3 F2 F1
 Trailer = F8 F7 F6 F5
@@ -25,6 +22,7 @@ from dataclasses import dataclass
 from typing import Iterator, Optional
 import struct
 import time
+import config 
 
 import serial
 
@@ -82,8 +80,8 @@ class SerialReader:
 
     def __init__(
         self,
-        port: str = "/dev/serial0",
-        baudrate: int = 115200,
+        port: str = config.SERIAL_PORT,
+        baudrate: int = config.BAUDRATE,
         timeout: float = 0.1,
         header: bytes = DEFAULT_HEADER,
         trailer: bytes = DEFAULT_TRAILER,

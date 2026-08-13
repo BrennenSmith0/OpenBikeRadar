@@ -42,7 +42,7 @@ def test_parse_single_target():
 
         0x8A,       # angle = 10°
         42,         # distance = 42 m
-        0,          # approaching
+        1,          # approaching
         55,         # speed = 55 km/h
         200         # snr
     ])
@@ -69,13 +69,13 @@ def test_parse_two_targets():
 
         0x85,
         20,
-        0,
+        1,
         40,
         100,
 
         0x78,
         80,
-        1,
+        0,
         25,
         180
     ])

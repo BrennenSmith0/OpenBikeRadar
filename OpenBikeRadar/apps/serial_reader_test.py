@@ -1,15 +1,11 @@
 
-
-
-
-
 from ld2451.serial_reader import SerialReader
 from ld2451.frame_parser import parse
 
 def main():
     with SerialReader() as reader:
         for frame in reader:
-            print(f"Raw frame length={frame.length}  payload={frame.payload.hex(' ')}")
+            print(f"Raw frame length={frame.length}   header={frame.header.hex(' ')}  payload={frame.payload.hex(' ')}, trailer={frame.trailer.hex(' ')}")
 
             try:
                 radar = parse(frame)

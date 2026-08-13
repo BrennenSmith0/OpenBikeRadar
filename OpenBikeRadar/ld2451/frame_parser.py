@@ -6,18 +6,18 @@ Parser for LD2451 intra-frame data reports.
 This module converts validated Frame objects from serial_reader.py
 into Python objects representing the radar targets.
 
-Protocol:
+Protocol for the body:
 
 Byte 0   Target Quantity
-Byte 1   Alarm Information
+Byte 1   Alarm Information, 0 if no target is approaching, 1 if a target is approaching
 
 Then N targets, each 5 bytes:
 
 Byte 0   Angle (actual = value - 0x80)
-Byte 1   Distance (meters)
-Byte 2   Speed Direction
-            0 = Approaching
-            1 = Moving Away
+Byte 1   Distance (meters) 0 - 100
+Byte 2   Speed Direction, this is flipped from the documentation for my sensor
+            0 = Moving Away
+            1 = Approaching
 Byte 3   Speed (km/h)
 Byte 4   SNR
 """
@@ -82,7 +82,7 @@ def parse(frame: Frame) -> RadarFrame:
     Parameters
     ----------
     frame : Frame
-        A validated Frame returned by SerialReader.
+        A validated Frame returned by SerialReader from serial_reader.py
 
     Returns
     -------
@@ -102,7 +102,9 @@ def parse(frame: Frame) -> RadarFrame:
     if len(payload) < 2:
         raise ValueError("Payload too short.")
 
+    #byte 0 is number of targets which each being 5 bytes with a trailer of 2 bytes
     target_count = payload[0]
+    #byte 1 is if someone is approaching
     approaching_detected = payload[1] == 1
 
     expected_length = 2 + target_count * 5

@@ -12,6 +12,6 @@ TRACK_MATCH_ANGLE = 10.0       # degrees
 TRACK_MAX_MISSED = 5          # frames
 TRACK_MATCH_SCORE = 2.0              # normalized score
 
-
+ANT_DEVICE_NUMBER = 12345 #the displayed device number when connecting to a garmin device
 
 
